@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magyar találmány kvíz</title>
+
+<style>
+
+body{
+font-family:Arial, sans-serif;
+margin:0;
+padding:0;
+text-align:center;
+background:linear-gradient(135deg,#4facfe,#00f2fe,#43e97b,#38f9d7);
+background-size:400% 400%;
+animation:bg 12s infinite alternate;
+color:white;
+}
+
+@keyframes bg{
+0%{background-position:left}
+100%{background-position:right}
+}
+
+#quiz{
+max-width:900px;
+margin:auto;
+padding:20px;
+}
+
+.question{
+font-size:20px;
+margin-bottom:15px;
+}
+
+.columns{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.column{
+background:rgba(255,255,255,0.1);
+padding:10px;
+border-radius:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+margin:5px 0;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+transform:scale(1.05);
+}
+
+.selected{
+outline:3px solid yellow;
+}
+
+.correct{
+background:#2ecc71!important;
+color:white;
+}
+
+.wrong{
+background:#e74c3c!important;
+color:white;
+}
+
+#timer{
+font-size:18px;
+margin-bottom:10px;
+}
+
+@media (max-width:600px){
+
+.columns{
+grid-template-columns:1fr;
+}
+
+}
+
+canvas{
+position:fixed;
+top:0;
+left:0;
+pointer-events:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="quiz">
+
+<h2>Magyar találmány kvíz</h2>
+
+<div id="timer">Idő: 20</div>
+
+<div class="question" id="question"></div>
+
+<div class="columns">
+
+<div class="column">
+<h3>Feltalálók</h3>
+<div id="inventors"></div>
+</div>
+
+<div class="column">
+<h3>Találmányok</h3>
+<div id="inventions"></div>
+</div>
+
+</div>
+
+<div id="result"></div>
+
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+
+const questions=[
+
+{
+q:"Színes kis kocka... Ki találta fel?",
+inventor:"Rubik Ernő",
+invention:"Bűvös kocka"
+},
+
+{
+q:"Nem pacáz, nem maszatol... Ki találta fel?",
+inventor:"Bíró László",
+invention:"Golyóstoll"
+},
+
+{
+q:"Kép a levegőben... Ki találta fel?",
+inventor:"Gábor Dénes",
+invention:"Holográfia"
+},
+
+{
+q:"Kapcsolom!... Ki találta fel?",
+inventor:"Puskás Tivadar",
+invention:"Telefonközpont"
+},
+
+{
+q:"Pörgésből energia... Ki találta fel?",
+inventor:"Jedlik Ányos",
+invention:"Dinamó"
+},
+
+{
+q:"Gravitáció suttogása... Ki találta fel?",
+inventor:"Eötvös Lóránd",
+invention:"Torziós inga"
+},
+
+{
+q:"Villanyos vonat... Ki találta fel?",
+inventor:"Kandó Kálmán",
+invention:"Villamos mozdony"
+},
+
+{
+q:"Savanykás szupererő... Ki fedezte fel?",
+inventor:"Szent-Györgyi Albert",
+invention:"C-vitamin"
+},
+
+{
+q:"Autó mindenki számára... Ki segített?",
+inventor:"Galamb József",
+invention:"Ford T-modell műszaki megoldások"
+},
+
+{
+q:"Biztonságos láng... Ki találta fel?",
+inventor:"Irinyi János",
+invention:"Biztonsági gyufa"
+}
+
+];
+
+const inventorsList=[
+"Rubik Ernő","Bíró László","Gábor Dénes","Puskás Tivadar",
+"Jedlik Ányos","Eötvös Lóránd","Kandó Kálmán","Szent-Györgyi Albert",
+"Galamb József","Irinyi János"
+];
+
+const inventionsList=[
+"Bűvös kocka","Golyóstoll","Holográfia","Telefonközpont",
+"Dinamó","Torziós inga","Villamos mozdony","C-vitamin",
+"Ford T-modell műszaki megoldások","Biztonsági gyufa"
+];
+
+let current=0;
+let score=0;
+let selectedInventor=null;
+let selectedInvention=null;
+
+let time=20;
+let timer;
+
+function shuffle(arr){
+return arr.sort(()=>Math.random()-0.5);
+}
+
+function showQuestion(){
+
+selectedInventor=null;
+selectedInvention=null;
+
+let q=questions[current];
+
+document.getElementById("question").innerText=q.q;
+
+let inv=shuffle([...inventorsList]).slice(0,4);
+if(!inv.includes(q.inventor)) inv[0]=q.inventor;
+
+let invn=shuffle([...inventionsList]).slice(0,4);
+if(!invn.includes(q.invention)) invn[1]=q.invention;
+
+renderButtons("inventors",inv,"inventor");
+renderButtons("inventions",invn,"invention");
+
+time=20;
+document.getElementById("timer").innerText="Idő: "+time;
+
+timer=setInterval(()=>{
+
+time--;
+document.getElementById("timer").innerText="Idő: "+time;
+
+if(time<=0){
+clearInterval(timer);
+checkAnswer();
+}
+
+},1000);
+
+}
+
+function renderButtons(id,data,type){
+
+let div=document.getElementById(id);
+div.innerHTML="";
+
+data.forEach(name=>{
+
+let btn=document.createElement("button");
+btn.innerText=name;
+
+btn.onclick=()=>{
+
+btn.parentElement.querySelectorAll("button")
+.forEach(b=>b.classList.remove("selected"));
+
+btn.classList.add("selected");
+
+if(type==="inventor") selectedInventor=name;
+else selectedInvention=name;
+
+if(selectedInventor && selectedInvention){
+clearInterval(timer);
+checkAnswer();
+}
+
+};
+
+div.appendChild(btn);
+
+});
+
+}
+
+function checkAnswer(){
+
+let q=questions[current];
+
+let buttons=document.querySelectorAll("button");
+
+buttons.forEach(btn=>{
+
+if(btn.innerText===q.inventor || btn.innerText===q.invention)
+btn.classList.add("correct");
+
+if(btn.classList.contains("selected") &&
+btn.innerText!==q.inventor &&
+btn.innerText!==q.invention)
+btn.classList.add("wrong");
+
+});
+
+if(selectedInventor===q.inventor && selectedInvention===q.invention)
+score++;
+
+setTimeout(()=>{
+
+current++;
+
+if(current<questions.length){
+showQuestion();
+}else{
+showResult();
+}
+
+},1500);
+
+}
+
+function showResult(){
+
+let text="Tanonc";
+
+if(score==10) text="Zseni";
+else if(score>=6) text="Kutató";
+
+document.getElementById("quiz").innerHTML=
+"<h2>Eredmény</h2>"+
+"<h1>"+score+"/10</h1>"+
+"<h2>"+text+"</h2>";
+
+if(score==10) startConfetti();
+
+}
+
+showQuestion();
+
+function startConfetti(){
+
+let canvas=document.getElementById("confetti");
+let ctx=canvas.getContext("2d");
+
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let pieces=[];
+
+for(let i=0;i<200;i++){
+pieces.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+r:Math.random()*6+4
+});
+}
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+pieces.forEach(p=>{
+
+ctx.beginPath();
+ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+ctx.fillStyle="hsl("+Math.random()*360+",100%,50%)";
+ctx.fill();
+
+p.y+=2;
+if(p.y>canvas.height) p.y=0;
+
+});
+
+requestAnimationFrame(draw);
+}
+
+draw();
+
+}
+
+</script>
+
+</body>
+</html>
